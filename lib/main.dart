@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:pagination_demo/features/products/views/home_view.dart';
 
 void main() {
