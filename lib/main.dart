@@ -16,9 +16,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-/*
-   Limit            Skip
-    20               0   
-    20       +       20
-    20               40
-*/ 
