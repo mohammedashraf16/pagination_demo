@@ -1,109 +1,130 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:pagination_demo/features/products/manager/cubit/product_cubit.dart';
+import 'package:pagination_demo/features/products/views/widgets/product_card_item.dart';
 
-class HomeView extends StatelessWidget {
+class HomeView extends StatefulWidget {
   const HomeView({super.key});
 
   @override
+  State<HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<HomeView> {
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: Text("All Products", style: TextStyle(fontSize: 22)),
-      ),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 8),
-        child: Column(
-          children: [
-            Expanded(
-              child: Padding(
-                padding: EdgeInsets.only(top: 16.0),
-                child: CustomScrollView(
-                  slivers: [
-                    SliverGrid(
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: .84,
+    return BlocProvider(
+      create: (context) => ProductCubit()..getProducts(),
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          title: Text("All Products", style: TextStyle(fontSize: 22)),
+        ),
+        body: BlocBuilder<ProductCubit, ProductState>(
+          builder: (context, state) {
+            if (state is ProductLoading) {
+              return Center(child: CircularProgressIndicator());
+            } else if (state is ProductFailure) {
+              return Center(child: Text("Error: ${state.errorMessage}"));
+            } else if (state is ProductNoNetwork) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.signal_wifi_off, color: Colors.red, size: 60),
+                    SizedBox(height: 16),
+                    Text(
+                      'No Internet Connection\nPlease check your network',
+                      style: TextStyle(fontSize: 18, color: Colors.grey[700]),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            final products = state is ProductScuccess ? state.product : [];
+            final hasReachedMax =
+                state is ProductScuccess && state.hasReachedMax;
+            final isLoadingMore =
+                state is ProductScuccess && state.isLoadingMore;
+
+            return Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: NotificationListener(
+                onNotification: (ScrollNotification scrollNotification) {
+                  if (scrollNotification.metrics.pixels >=
+                          scrollNotification.metrics.maxScrollExtent &&
+                      !hasReachedMax &&
+                      !isLoadingMore) {
+                    context.read<ProductCubit>().getProducts(isLoadMore: true);
+                  }
+                  return true;
+                },
+                child: RefreshIndicator(
+                  onRefresh: () => context.read<ProductCubit>().getProducts(),
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.only(top: 16),
+                        sliver: SliverGrid(
+                          gridDelegate:
+                              SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 0.84,
+                                crossAxisSpacing: 8,
+                                mainAxisSpacing: 8,
+                              ),
+                          delegate: SliverChildBuilderDelegate((
+                            context,
+                            index,
+                          ) {
+                            final product = products[index];
+                            return ProductCardItem(product: product);
+                          }, childCount: products.length),
+                        ),
                       ),
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        return Card(
-                          clipBehavior: Clip.none,
-                          shadowColor: Colors.grey,
-                          margin: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 8,
+                      if (isLoadingMore && !hasReachedMax)
+                        SliverToBoxAdapter(
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: CircularProgressIndicator(),
+                            ),
                           ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                height: 130,
-                                color: Colors.white54,
-                                child: Center(
-                                  child: Container(color: Colors.white24),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 5.0,
-                                  vertical: 2,
-                                ),
-                                child: Text(
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  "product:${index}",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                        ),
+                      if (hasReachedMax && products.isNotEmpty)
+                        SliverToBoxAdapter(
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Column(
                                 children: [
-                                  Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 5.0,
-                                      vertical: 5,
-                                    ),
-                                    child: Text(
-                                      "\$20",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: Colors.green,
-                                      ),
-                                    ),
+                                  Icon(
+                                    Icons.check_circle_outline,
+                                    color: Colors.green,
+                                    size: 32,
                                   ),
-                                  Padding(
-                                    padding: EdgeInsets.only(right: 14),
-                                    child: Text(
-                                      "4.5",
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                        color: const Color.fromARGB(
-                                          255,
-                                          205,
-                                          186,
-                                          15,
-                                        ),
-                                      ),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    'No More Data',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                        );
-                      }, childCount: 30),
-                    ),
-                  ],
+                        ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

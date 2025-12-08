@@ -3,32 +3,29 @@ import 'package:internet_connection_checker_plus/internet_connection_checker_plu
 import 'package:pagination_demo/features/products/models/product_model.dart';
 
 class ApiService {
-  final dio = Dio();
-
+  final Dio dio = Dio();
+  final String baseUrl = 'https://dummyjson.com/products';
   Future<ProductModel> fetchProducts({
     required int limit,
     required int skip,
   }) async {
-    final String baseUrl = "https://dummyjson.com/products";
-    Map<String, dynamic> queryParameters = {"limit": limit, "skip": skip};
-    final isConnected = await InternetConnection().hasInternetAccess;
+    final Map<String, dynamic> parameters = {'limit': limit, 'skip': skip};
+    final bool isConnected = await InternetConnection().hasInternetAccess;
     if (!isConnected) {
-      throw Exception("No Internet connection , please check your network");
+      throw Exception('No internet connection. Please check your network.');
     }
+
     try {
-      final response = await dio.get(
-        "https://dummyjson.com/products",
-        queryParameters: queryParameters,
-      );
+      final response = await dio.get(baseUrl, queryParameters: parameters);
       if (response.statusCode == 200) {
         return ProductModel.fromJson(response.data);
       } else {
-        throw Exception("products not found");
+        throw Exception('Failed to load products');
       }
     } on DioException catch (e) {
-      throw Exception("Network Error : $e");
+      throw Exception('Network error: ${e.message}');
     } on Exception catch (e) {
-      throw Exception("Error: $e");
+      throw Exception('Error fetching products: $e');
     }
   }
 }
